@@ -1,3 +1,4 @@
+use crate::error::Error;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
@@ -13,15 +14,61 @@ pub struct NELReport {
     request_headers: HashMap<String, Vec<String>>,
     response_headers: HashMap<String, Vec<String>>,
     status_code: usize,
-    elapsed_time: usize,
     phase: String,
     error_type: String,
 }
 
 impl NELReport {
+    pub fn new<T: Into<Error>>(url: String, err: T) -> Self {
+        let err: Error = err.into();
+
+        NELReport {
+            captured: Instant::now(),
+
+            url: url,
+            server_ip: "".to_string(),
+            protocol: "".to_string(),
+            method: "".to_string(),
+            request_headers: HashMap::new(),
+            response_headers: HashMap::new(),
+            status_code: 0,
+            phase: err.phase(),
+            error_type: err.to_string(),
+        }
+    }
+
+    pub fn set_serialize_ip<T: ExtractString>(&mut self, val: T) {
+        self.server_ip = val.extract();
+    }
+    pub fn set_protocol<T: ExtractString>(&mut self, val: T) {
+        self.protocol = val.extract();
+    }
+    pub fn set_method<T: ExtractString>(&mut self, val: T) {
+        self.method = val.extract();
+    }
+
     pub fn serialize(&self) -> String {
         let hdr = ReportHeader::from(self);
         serde_json::to_string(&hdr).unwrap()
+    }
+}
+
+pub trait ExtractString {
+    fn extract(&self) -> String;
+}
+
+impl<T: ToString> ExtractString for T {
+    fn extract(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl<T: ToString> ExtractString for Option<T> {
+    fn extract(&self) -> String {
+        match self {
+            None => "".to_string(),
+            Some(val) => val.to_string(),
+        }
     }
 }
 
@@ -50,7 +97,6 @@ struct ReportBody {
     request_headers: HashMap<String, Vec<String>>,
     response_headers: HashMap<String, Vec<String>>,
     status_code: usize,
-    elapsed_time: usize,
     phase: String,
     #[serde(rename = "type")]
     error_type: String,
@@ -73,7 +119,6 @@ impl From<&NELReport> for ReportHeader {
                 request_headers: report.request_headers.clone(),
                 response_headers: report.response_headers.clone(),
                 status_code: report.status_code,
-                elapsed_time: report.elapsed_time,
                 phase: report.phase.to_string(),
                 error_type: report.error_type.clone(),
             },

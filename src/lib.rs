@@ -1,3 +1,4 @@
+mod error;
 pub mod report;
 
 #[macro_use]
