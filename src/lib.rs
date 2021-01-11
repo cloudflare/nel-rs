@@ -7,11 +7,13 @@ extern crate lazy_static;
 use deadqueue::limited::Queue;
 use futures::future::{Fuse, FutureExt};
 use futures::{pin_mut, select, Future};
-use report::{FailedReport, NELReport};
+use report::FailedReport;
 use std::fmt;
 use std::time::{Duration, Instant};
 
-const NEL_ENDPOINT: &'static str = "https://google.com/";
+pub use report::NELReport;
+
+const NEL_ENDPOINT: &'static str = "http://localhost:8080/";
 const RETRY_TIMEOUT: Duration = Duration::from_secs(5);
 
 lazy_static! {

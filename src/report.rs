@@ -4,16 +4,17 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 /// NELReport captures all of the internal information we need about an error that occurred.
+#[derive(Debug)]
 pub struct NELReport {
     captured: Instant,
 
-    url: String,
-    server_ip: String,
-    protocol: String,
-    method: String,
-    request_headers: HashMap<String, Vec<String>>,
-    response_headers: HashMap<String, Vec<String>>,
-    status_code: usize,
+    pub url: String,
+    pub server_ip: String,
+    pub protocol: String,
+    pub method: String,
+    pub request_headers: HashMap<String, Vec<String>>,
+    pub response_headers: HashMap<String, Vec<String>>,
+    pub status_code: usize,
     phase: String,
     error_type: String,
 }
@@ -37,14 +38,14 @@ impl NELReport {
         }
     }
 
-    pub fn set_serialize_ip<T: ExtractString>(&mut self, val: T) {
-        self.server_ip = val.extract();
+    pub fn set_server_ip<T: ToString>(&mut self, val: Option<T>) {
+        self.server_ip = opt_to_string(val);
     }
-    pub fn set_protocol<T: ExtractString>(&mut self, val: T) {
-        self.protocol = val.extract();
+    pub fn set_protocol<T: ToString>(&mut self, val: Option<T>) {
+        self.protocol = opt_to_string(val);
     }
-    pub fn set_method<T: ExtractString>(&mut self, val: T) {
-        self.method = val.extract();
+    pub fn set_method<T: ToString>(&mut self, val: Option<T>) {
+        self.method = opt_to_string(val);
     }
 
     pub fn serialize(&self) -> String {
@@ -53,22 +54,10 @@ impl NELReport {
     }
 }
 
-pub trait ExtractString {
-    fn extract(&self) -> String;
-}
-
-impl<T: ToString> ExtractString for T {
-    fn extract(&self) -> String {
-        self.to_string()
-    }
-}
-
-impl<T: ToString> ExtractString for Option<T> {
-    fn extract(&self) -> String {
-        match self {
-            None => "".to_string(),
-            Some(val) => val.to_string(),
-        }
+fn opt_to_string<T: ToString>(input: Option<T>) -> String {
+    match input {
+        None => "".to_string(),
+        Some(val) => val.to_string(),
     }
 }
 
