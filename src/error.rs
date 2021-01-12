@@ -1,3 +1,4 @@
+use rustls::TLSError;
 use std::string::ToString;
 
 pub struct Error {
@@ -44,7 +45,13 @@ impl From<&std::io::Error> for Error {
             ErrorKind::ConnectionReset => Error::new("tcp", "reset"),
             ErrorKind::ConnectionRefused => Error::new("tcp", "refused"),
             ErrorKind::ConnectionAborted => Error::new("tcp", "aborted"),
-            _ => Error::new("tcp", "failed"),
+            _ => match err.get_ref() {
+                None => Error::new("tcp", "failed"),
+                Some(inner) => match inner {
+                    TLSError => Error::new("tls", "protocol.error"),
+                    _ => Error::new("unknown", "unknown"),
+                },
+            },
         }
     }
 }

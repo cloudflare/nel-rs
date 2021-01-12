@@ -1,6 +1,5 @@
 use crate::error::Error;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 /// NELReport captures all of the internal information we need about an error that occurred.
@@ -12,8 +11,6 @@ pub struct NELReport {
     pub server_ip: String,
     pub protocol: String,
     pub method: String,
-    pub request_headers: HashMap<String, Vec<String>>,
-    pub response_headers: HashMap<String, Vec<String>>,
     pub status_code: usize,
     phase: String,
     error_type: String,
@@ -28,8 +25,6 @@ impl NELReport {
             server_ip: "".to_string(),
             protocol: "".to_string(),
             method: "".to_string(),
-            request_headers: HashMap::new(),
-            response_headers: HashMap::new(),
             status_code: 0,
             phase: "".to_string(),
             error_type: "".to_string(),
@@ -37,7 +32,11 @@ impl NELReport {
     }
 
     pub fn set_server_ip<T: ToString>(&mut self, val: Option<T>) {
-        self.server_ip = opt_to_string(val);
+        self.server_ip = opt_to_string(val)
+            .splitn(2, ':') // Remove port if present.
+            .next()
+            .unwrap()
+            .to_string();
     }
     pub fn set_protocol<T: ToString>(&mut self, val: Option<T>) {
         self.protocol = opt_to_string(val);
@@ -52,8 +51,8 @@ impl NELReport {
     }
 
     pub fn serialize(&self) -> String {
-        let hdr = ReportHeader::from(self);
-        serde_json::to_string(&hdr).unwrap()
+        let hdrs = vec![ReportHeader::from(self)];
+        serde_json::to_string(&hdrs).unwrap()
     }
 }
 
@@ -82,13 +81,13 @@ struct ReportHeader {
 
 #[derive(Serialize, Deserialize)]
 struct ReportBody {
+    referrer: String,
     sampling_fraction: f64,
     server_ip: String,
     protocol: String,
     method: String,
-    request_headers: HashMap<String, Vec<String>>,
-    response_headers: HashMap<String, Vec<String>>,
     status_code: usize,
+    elapsed_time: usize,
     phase: String,
     #[serde(rename = "type")]
     error_type: String,
@@ -104,13 +103,13 @@ impl From<&NELReport> for ReportHeader {
             report_type: "network-error".to_string(),
             url: report.url.clone(),
             body: ReportBody {
+                referrer: "".to_string(),
                 sampling_fraction: 1.0,
                 server_ip: report.server_ip.clone(),
                 protocol: report.protocol.clone(),
                 method: report.method.clone(),
-                request_headers: report.request_headers.clone(),
-                response_headers: report.response_headers.clone(),
                 status_code: report.status_code,
+                elapsed_time: 0,
                 phase: report.phase.to_string(),
                 error_type: report.error_type.clone(),
             },
