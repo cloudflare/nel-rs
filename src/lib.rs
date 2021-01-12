@@ -1,4 +1,4 @@
-#![recursion_limit = "256"]
+#![recursion_limit = "512"]
 
 mod error;
 pub mod report;
@@ -10,12 +10,11 @@ use deadqueue::limited::Queue;
 use futures::future::{Fuse, FutureExt};
 use futures::{pin_mut, select, Future};
 use report::FailedReport;
-use std::fmt;
 use std::time::{Duration, Instant};
 
 pub use report::NELReport;
 
-const NEL_ENDPOINT: &'static str = "http://localhost:8080/";
+pub const NEL_ENDPOINT: &'static str = "a.nel.cloudflare.com";
 const RETRY_TIMEOUT: Duration = Duration::from_secs(5);
 
 lazy_static! {
@@ -28,10 +27,12 @@ pub fn submit_report(report: NELReport) {
 }
 
 // handle_reports receives NEL reports and submits them to the reporting endpoint.
-pub async fn handle_reports<F, Fut>(sleep: F)
+pub async fn handle_reports<F, G, FFut, GFut>(sleep: F, post: G)
 where
-    F: Fn(Duration) -> Fut,
-    Fut: Future<Output = ()>,
+    F: Fn(Duration) -> FFut,
+    G: Fn(String, String, String) -> GFut,
+    FFut: Future<Output = ()>,
+    GFut: Future<Output = bool>,
 {
     let pop = REPORT_QUEUE.pop().fuse();
 
@@ -45,7 +46,8 @@ where
         select! {
             report = pop => {
                 // Submit report.
-                let success = handle_report(&report).await.is_ok();
+                let payload = report.serialize();
+                let success = post(NEL_ENDPOINT.to_string(), "/report".to_string(), payload).await;
 
                 // If submitting the report failed, save it and try again later.
                 if !success {
@@ -64,9 +66,10 @@ where
                 // Start waiting for the next report.
                 pop.set(REPORT_QUEUE.pop().fuse());
             },
-            () = fail_timeout => {
+            _ = fail_timeout => {
                 // Submit next_failed report.
-                let success = handle_report(&next_failed.as_ref().unwrap().original).await.is_ok();
+                let payload = next_failed.as_ref().unwrap().original.serialize();
+                let success = post(NEL_ENDPOINT.to_string(), "/report".to_string(), payload).await;
 
                 // If submitting the report failed, save it and try again later.
                 if !success {
@@ -90,44 +93,4 @@ where
             },
         }
     }
-}
-
-enum ReportErr {
-    HTTP(reqwest::Error),
-    UnexpectedStatus(reqwest::StatusCode),
-}
-
-impl fmt::Display for ReportErr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            ReportErr::UnexpectedStatus(status) => write!(
-                f,
-                "unexpected response status from nel endpoint: {}",
-                status
-            ),
-            ReportErr::HTTP(err) => err.fmt(f),
-        }
-    }
-}
-
-impl From<reqwest::Error> for ReportErr {
-    fn from(err: reqwest::Error) -> Self {
-        ReportErr::HTTP(err)
-    }
-}
-
-// handle_report serializes `report` and submits it to the backend.
-async fn handle_report(report: &NELReport) -> Result<(), ReportErr> {
-    let resp = reqwest::Client::new()
-        .post(NEL_ENDPOINT)
-        .header("Content-Type", "application/reports+json")
-        .header("User-Agent", "WARP NEL Reporter")
-        .body(report.serialize())
-        .send()
-        .await?;
-    if !resp.status().is_success() {
-        return Err(ReportErr::UnexpectedStatus(resp.status()));
-    }
-
-    Ok(())
 }
