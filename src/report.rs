@@ -20,9 +20,7 @@ pub struct NELReport {
 }
 
 impl NELReport {
-    pub fn new<T: Into<Error>>(url: String, err: T) -> Self {
-        let err: Error = err.into();
-
+    pub fn new(url: String) -> Self {
         NELReport {
             captured: Instant::now(),
 
@@ -33,8 +31,8 @@ impl NELReport {
             request_headers: HashMap::new(),
             response_headers: HashMap::new(),
             status_code: 0,
-            phase: err.phase(),
-            error_type: err.to_string(),
+            phase: "".to_string(),
+            error_type: "".to_string(),
         }
     }
 
@@ -46,6 +44,11 @@ impl NELReport {
     }
     pub fn set_method<T: ToString>(&mut self, val: Option<T>) {
         self.method = opt_to_string(val);
+    }
+    pub fn set_error<T: Into<Error>>(&mut self, err: T) {
+        let err: Error = err.into();
+        self.phase = err.phase();
+        self.error_type = err.to_string();
     }
 
     pub fn serialize(&self) -> String {

@@ -35,8 +35,8 @@ impl ToString for Error {
     }
 }
 
-impl From<std::io::Error> for Error {
-    fn from(err: std::io::Error) -> Self {
+impl From<&std::io::Error> for Error {
+    fn from(err: &std::io::Error) -> Self {
         use std::io::ErrorKind;
 
         match err.kind() {
