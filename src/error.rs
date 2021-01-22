@@ -47,10 +47,13 @@ impl From<&std::io::Error> for Error {
             ErrorKind::ConnectionAborted => Error::new("tcp", "aborted"),
             _ => match err.get_ref() {
                 None => Error::new("tcp", "failed"),
-                Some(inner) => match inner {
-                    TLSError => Error::new("tls", "protocol.error"),
-                    _ => Error::new("unknown", "unknown"),
-                },
+                Some(inner) => {
+                    if inner.downcast_ref::<TLSError>().is_some() {
+                        Error::new("tls", "protocol.error")
+                    } else {
+                        Error::new("unknown", "unknown")
+                    }
+                }
             },
         }
     }
