@@ -41,8 +41,8 @@ struct ReportEndpoint {
 }
 
 // report_to takes the value of the Report-To header and saves the NEL endpoint URL.
-pub fn report_to(hdr: String) {
-    let val = serde_json::from_str::<ReportToHeader>(&hdr);
+pub fn report_to(hdr: &str) {
+    let val = serde_json::from_str::<ReportToHeader>(hdr);
     if !val.is_ok() {
         return;
     }
@@ -52,15 +52,19 @@ pub fn report_to(hdr: String) {
     } else if val.endpoints.len() < 1 {
         return;
     }
+
     let prefix = format!("https://{}/report?s=", NEL_ENDPOINT);
-    let query = val.endpoints[0].url.strip_prefix(&prefix);
-    if query.is_none() {
+    for endpoint in val.endpoints {
+        let query = endpoint.url.strip_prefix(&prefix);
+        if query.is_none() {
+            continue;
+        }
+        let query = query.unwrap();
+
+        let mut query_string = QUERY_STRING.lock().unwrap();
+        *query_string = query.to_string();
         return;
     }
-    let query = query.unwrap();
-
-    let mut query_string = QUERY_STRING.lock().unwrap();
-    *query_string = query.to_string();
 }
 
 // handle_reports receives NEL reports and submits them to the reporting endpoint.
@@ -109,7 +113,10 @@ where
             _ = fail_timeout => {
                 // Submit next_failed report.
                 let payload = next_failed.as_ref().unwrap().original.serialize();
-                let success = post(NEL_ENDPOINT.to_string(), "/report".to_string(), payload).await;
+                let path = {
+                    format!("/report?s={}", QUERY_STRING.lock().unwrap())
+                };
+                let success = post(NEL_ENDPOINT.to_string(), path, payload).await;
 
                 // If submitting the report failed, save it and try again later.
                 if !success {
