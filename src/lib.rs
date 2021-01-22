@@ -10,6 +10,8 @@ use deadqueue::limited::Queue;
 use futures::future::{Fuse, FutureExt};
 use futures::{pin_mut, select, Future};
 use report::FailedReport;
+use serde::{Deserialize, Serialize};
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 pub use report::NELReport;
@@ -18,12 +20,47 @@ pub const NEL_ENDPOINT: &'static str = "a.nel.cloudflare.com";
 const RETRY_TIMEOUT: Duration = Duration::from_secs(5);
 
 lazy_static! {
+    static ref QUERY_STRING: Mutex<String> = Mutex::new("".to_string());
     static ref REPORT_QUEUE: Queue<NELReport> = Queue::new(256);
 }
 
 // submit_report adds a report to the queue to be sent to the server.
 pub fn submit_report(report: NELReport) {
     let _ = REPORT_QUEUE.try_push(report);
+}
+
+#[derive(Serialize, Deserialize)]
+struct ReportToHeader {
+    group: String,
+    endpoints: Vec<ReportEndpoint>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct ReportEndpoint {
+    url: String,
+}
+
+// report_to takes the value of the Report-To header and saves the NEL endpoint URL.
+pub fn report_to(hdr: String) {
+    let val = serde_json::from_str::<ReportToHeader>(&hdr);
+    if !val.is_ok() {
+        return;
+    }
+    let val = val.unwrap();
+    if val.group != "cf-nel" {
+        return;
+    } else if val.endpoints.len() < 1 {
+        return;
+    }
+    let prefix = format!("https://{}/report?s=", NEL_ENDPOINT);
+    let query = val.endpoints[0].url.strip_prefix(&prefix);
+    if query.is_none() {
+        return;
+    }
+    let query = query.unwrap();
+
+    let mut query_string = QUERY_STRING.lock().unwrap();
+    *query_string = query.to_string();
 }
 
 // handle_reports receives NEL reports and submits them to the reporting endpoint.
@@ -47,7 +84,10 @@ where
             report = pop => {
                 // Submit report.
                 let payload = report.serialize();
-                let success = post(NEL_ENDPOINT.to_string(), "/report".to_string(), payload).await;
+                let path = {
+                    format!("/report?s={}", QUERY_STRING.lock().unwrap())
+                };
+                let success = post(NEL_ENDPOINT.to_string(), path, payload).await;
 
                 // If submitting the report failed, save it and try again later.
                 if !success {
