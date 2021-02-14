@@ -2,8 +2,8 @@ use rustls::TLSError;
 use std::string::ToString;
 
 pub struct Error {
-    class: String,
-    subclass: String,
+    pub class: String,
+    pub subclass: String,
 }
 
 impl Error {
@@ -18,6 +18,7 @@ impl Error {
         match self.class.as_ref() {
             "dns" => "dns",
             "tcp" => "connection",
+            "udp" => "connection",
             "tls" => "connection",
             "http" => "application",
             _ => "unknown",
@@ -45,15 +46,19 @@ impl From<&std::io::Error> for Error {
             ErrorKind::ConnectionReset => Error::new("tcp", "reset"),
             ErrorKind::ConnectionRefused => Error::new("tcp", "refused"),
             ErrorKind::ConnectionAborted => Error::new("tcp", "aborted"),
-            _ => match err.get_ref() {
-                None => Error::new("tcp", "failed"),
-                Some(inner) => {
-                    if inner.downcast_ref::<TLSError>().is_some() {
-                        Error::new("tls", "protocol.error")
-                    } else {
-                        Error::new("unknown", "unknown")
+
+            _ => match format!("{}", err) {
+                str if str.contains("No route to host") => Error::new("tcp", "address_unreachable"),
+                _ => match err.get_ref() {
+                    None => Error::new("tcp", "failed"),
+                    Some(inner) => {
+                        if inner.downcast_ref::<TLSError>().is_some() {
+                            Error::new("tls", "protocol.error")
+                        } else {
+                            Error::new("unknown", "unknown")
+                        }
                     }
-                }
+                },
             },
         }
     }

@@ -32,11 +32,16 @@ impl NELReport {
     }
 
     pub fn set_server_ip<T: ToString>(&mut self, val: Option<T>) {
-        self.server_ip = opt_to_string(val)
-            .splitn(2, ':') // Remove port if present.
-            .next()
-            .unwrap()
-            .to_string();
+        let mut server_ip = opt_to_string(val);
+
+        // Remove port if present.
+        if server_ip.starts_with("[") {
+            server_ip = server_ip[1..].splitn(2, ']').next().unwrap().to_string();
+        } else {
+            server_ip = server_ip.splitn(2, ':').next().unwrap().to_string();
+        }
+
+        self.server_ip = server_ip;
     }
     pub fn set_protocol<T: ToString>(&mut self, val: Option<T>) {
         self.protocol = opt_to_string(val);
@@ -45,7 +50,10 @@ impl NELReport {
         self.method = opt_to_string(val);
     }
     pub fn set_error<T: Into<Error>>(&mut self, err: T) {
-        let err: Error = err.into();
+        let mut err: Error = err.into();
+        if self.protocol == "wireguard" && err.class == "tcp" {
+            err.class = "udp".to_string();
+        }
         self.phase = err.phase();
         self.error_type = err.to_string();
     }
