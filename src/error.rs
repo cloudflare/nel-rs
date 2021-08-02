@@ -54,6 +54,8 @@ impl From<&std::io::Error> for Error {
     fn from(err: &std::io::Error) -> Self {
         use std::io::ErrorKind;
 
+        eprintln!("{:?}", err);
+
         match err.kind() {
             ErrorKind::TimedOut => Error::new("tcp", "timed_out"),
             ErrorKind::ConnectionReset => Error::new("tcp", "reset"),
@@ -61,7 +63,9 @@ impl From<&std::io::Error> for Error {
             ErrorKind::ConnectionAborted => Error::new("tcp", "aborted"),
 
             _ => match err.to_string().to_lowercase() {
-                str if str.contains("no address") => Error::new("dns", "name_not_resolved"),
+                str if str.contains("no address") || str.contains("name or service not known") => {
+                    Error::new("dns", "name_not_resolved")
+                }
                 str if str.contains("no route to host") => Error::new("tcp", "address_unreachable"),
                 str if str.contains("expired") => Error::new("tls", "cert.date_invalid"),
                 str if str.contains("unknownissuer") => Error::new("tls", "cert.authority_invalid"),
