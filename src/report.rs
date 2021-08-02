@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
 
 /// NELReport captures all of the internal information we need about an error that occurred.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NELReport {
     captured: Instant,
 
