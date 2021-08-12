@@ -1,7 +1,7 @@
 #![recursion_limit = "512"]
 
 mod error;
-pub mod report;
+mod report;
 
 #[macro_use]
 extern crate lazy_static;
@@ -14,13 +14,14 @@ use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
+pub use error::Error;
 pub use report::NELReport;
 
 pub const NEL_ENDPOINT: &'static str = "a.nel.cloudflare.com";
 const RETRY_TIMEOUT: Duration = Duration::from_secs(5);
 
 lazy_static! {
-    static ref QUERY_STRING: Mutex<String> = Mutex::new("".to_string());
+    static ref REPORT_PATH: Mutex<String> = Mutex::new("".to_string());
     static ref REPORT_QUEUE: Queue<NELReport> = Queue::new(256);
 }
 
@@ -53,16 +54,16 @@ pub fn report_to(hdr: &str) {
         return;
     }
 
-    let prefix = format!("https://{}/report?s=", NEL_ENDPOINT);
+    let prefix = format!("https://{}/", NEL_ENDPOINT);
     for endpoint in val.endpoints {
-        let query = endpoint.url.strip_prefix(&prefix);
-        if query.is_none() {
+        let path = endpoint.url.strip_prefix(&prefix[..prefix.len() - 1]);
+        if path.is_none() {
             continue;
         }
-        let query = query.unwrap();
+        let path = path.unwrap();
 
-        let mut query_string = QUERY_STRING.lock().unwrap();
-        *query_string = query.to_string();
+        let mut report_path = REPORT_PATH.lock().unwrap();
+        *report_path = path.to_string();
         return;
     }
 }
@@ -88,9 +89,7 @@ where
             report = pop => {
                 // Submit report.
                 let payload = report.serialize();
-                let path = {
-                    format!("/report?s={}", QUERY_STRING.lock().unwrap())
-                };
+                let path = REPORT_PATH.lock().unwrap().clone();
                 let success = post(NEL_ENDPOINT.to_string(), path, payload).await;
 
                 // If submitting the report failed, save it and try again later.
@@ -113,9 +112,7 @@ where
             _ = fail_timeout => {
                 // Submit next_failed report.
                 let payload = next_failed.as_ref().unwrap().original.serialize();
-                let path = {
-                    format!("/report?s={}", QUERY_STRING.lock().unwrap())
-                };
+                let path = REPORT_PATH.lock().unwrap().clone();
                 let success = post(NEL_ENDPOINT.to_string(), path, payload).await;
 
                 // If submitting the report failed, save it and try again later.
