@@ -57,6 +57,9 @@ impl NELReport {
         self.phase = err.phase();
         self.error_type = err.to_string();
     }
+    pub fn set_status_code(&mut self, code: usize) {
+        self.status_code = code;
+    }
 
     pub fn serialize(&self) -> String {
         let hdrs = vec![ReportHeader::from(self)];
