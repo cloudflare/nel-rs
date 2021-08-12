@@ -21,7 +21,7 @@ impl NELReport {
         NELReport {
             captured: Instant::now(),
 
-            url: url,
+            url,
             server_ip: "".to_string(),
             protocol: "".to_string(),
             method: "".to_string(),
@@ -35,7 +35,7 @@ impl NELReport {
         let mut server_ip = opt_to_string(val);
 
         // Remove port if present.
-        if server_ip.starts_with("[") {
+        if server_ip.starts_with('[') {
             server_ip = server_ip[1..].splitn(2, ']').next().unwrap().to_string();
         } else {
             server_ip = server_ip.splitn(2, ':').next().unwrap().to_string();
@@ -109,7 +109,7 @@ impl From<&NELReport> for ReportHeader {
         ReportHeader {
             age: Instant::now()
                 .checked_duration_since(report.captured)
-                .unwrap_or(Duration::from_secs(0))
+                .unwrap_or_else(|| Duration::from_secs(0))
                 .as_millis() as usize,
             report_type: "network-error".to_string(),
             url: report.url.clone(),

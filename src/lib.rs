@@ -17,7 +17,7 @@ use std::time::{Duration, Instant};
 pub use error::Error;
 pub use report::NELReport;
 
-pub const NEL_ENDPOINT: &'static str = "a.nel.cloudflare.com";
+pub const NEL_ENDPOINT: &str = "a.nel.cloudflare.com";
 const RETRY_TIMEOUT: Duration = Duration::from_secs(5);
 
 lazy_static! {
@@ -44,13 +44,11 @@ struct ReportEndpoint {
 // report_to takes the value of the Report-To header and saves the NEL endpoint URL.
 pub fn report_to(hdr: &str) {
     let val = serde_json::from_str::<ReportToHeader>(hdr);
-    if !val.is_ok() {
+    if val.is_err() {
         return;
     }
     let val = val.unwrap();
-    if val.group != "cf-nel" {
-        return;
-    } else if val.endpoints.len() < 1 {
+    if val.group != "cf-nel" || val.endpoints.is_empty() {
         return;
     }
 
@@ -127,7 +125,7 @@ where
                 if let Some(failed) = failed_queue.try_pop() {
                     let dur = RETRY_TIMEOUT
                         .checked_sub(Instant::now().duration_since(failed.last_try))
-                        .unwrap_or(Duration::from_millis(10));
+                        .unwrap_or_else(|| Duration::from_millis(10));
                     fail_timeout.set(sleep(dur).fuse());
                     next_failed = Some(failed)
                 } else {
