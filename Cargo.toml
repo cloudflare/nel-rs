@@ -2,6 +2,7 @@
 name = "nel"
 version = "0.1.2"
 authors = ["Brendan McMillion <brendan@cloudflare.com>"]
+license = "BSD-3-Clause"
 edition = "2018"
 
 [dependencies]
