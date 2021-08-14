@@ -67,6 +67,7 @@ impl From<&std::io::Error> for Error {
                     Error::new("dns", "name_not_resolved")
                 }
                 str if str.contains("no route to host") => Error::new("tcp", "address_unreachable"),
+                str if str.contains("unreachable") => Error::new("tcp", "address_unreachable"),
                 str if str.contains("expired") => Error::new("tls", "cert.date_invalid"),
                 str if str.contains("unknownissuer") => Error::new("tls", "cert.authority_invalid"),
                 str if str.contains("certnotvalidforname") => {
