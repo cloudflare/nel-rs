@@ -35,10 +35,10 @@ pub async fn main() {
     tokio::time::sleep(std::time::Duration::from_secs(15)).await;
 }
 
-async fn post_to_cloudflare(host: String, path: String, payload: String) -> bool {
+async fn post_to_cloudflare(uri: String, payload: String) -> bool {
     let req = hyper::Request::builder()
         .method(hyper::Method::POST)
-        .uri(format!("https://{}{}", host, path))
+        .uri(uri)
         .header(hyper::header::CONTENT_TYPE, "application/reports+json")
         .header(hyper::header::USER_AGENT, "example-hyper-nel-rs")
         .body(payload.into())
@@ -75,9 +75,12 @@ fn nel_process_response(
     resp: &hyper::Result<hyper::Response<hyper::Body>>,
 ) {
     if let Ok(resp) = resp.as_ref() {
+        let host = url.host().unwrap();
         for (name, value) in resp.headers() {
-            if name == "report-to" {
-                nel::report_to(value.to_str().expect("utf-8 report-to"));
+            if name == "nel" {
+                nel::nel_header(host, value.to_str().expect("non-utf-8 nel header"))
+            } else if name == "report-to" {
+                nel::report_to_header(host, value.to_str().expect("non-utf-8 report-to header"));
             }
         }
     }
