@@ -12,7 +12,6 @@ use futures::{pin_mut, select, Future};
 use rand::{random, seq::SliceRandom, thread_rng};
 use report::FailedReport;
 use serde::{Deserialize, Serialize};
-use std::convert::TryInto;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use ttl_cache::TtlCache;
@@ -39,8 +38,10 @@ lazy_static! {
 
 #[derive(Serialize, Deserialize)]
 struct NelHeader {
+    /// Name of group to send reports to.
     report_to: String,
-    max_age: usize,
+    /// Lifetime of policy in seconds.
+    max_age: u64,
     #[serde(default)]
     include_subdomains: bool,
     #[serde(default)]
@@ -49,7 +50,7 @@ struct NelHeader {
     failure_fraction: f32,
 }
 
-fn default_failure_fraction() -> f32 {
+const fn default_failure_fraction() -> f32 {
     1.0
 }
 
@@ -61,18 +62,14 @@ pub fn nel_header(host: &str, hdr: &str) {
     };
 
     let valid = !parsed.report_to.is_empty()
-        && parsed.success_fraction >= 0.0
-        && parsed.success_fraction <= 1.0
-        && parsed.failure_fraction >= 0.0
-        && parsed.failure_fraction <= 1.0;
+        && (0.0..=1.0).contains(&parsed.success_fraction)
+        && (0.0..=1.0).contains(&parsed.failure_fraction);
     if !valid {
         return;
     }
 
-    let max_age = parsed.max_age.try_into().unwrap_or(0);
-
     if let Ok(mut guard) = NEL_POLICY_CACHE.lock() {
-        if max_age == 0 {
+        if parsed.max_age == 0 {
             guard.remove(host);
         } else {
             let policy = NELPolicy {
@@ -80,15 +77,21 @@ pub fn nel_header(host: &str, hdr: &str) {
                 success_fraction: parsed.success_fraction,
                 failure_fraction: parsed.failure_fraction,
             };
-            guard.insert(host.to_string(), policy, Duration::from_secs(max_age));
+            guard.insert(
+                host.to_string(),
+                policy,
+                Duration::from_secs(parsed.max_age),
+            );
         }
     }
 }
 
 #[derive(Serialize, Deserialize)]
 struct ReportToHeader {
+    /// Name of this group of endpoints.
     group: String,
-    max_age: usize,
+    /// Lifetime of policy in seconds.
+    max_age: u64,
     endpoints: Vec<ReportEndpoint>,
 }
 
@@ -115,14 +118,13 @@ pub fn report_to_header(host: &str, hdr: &str) {
     }
 
     let key = format!("{}:{}", host, parsed.group);
-    let max_age = parsed.max_age.try_into().unwrap_or(0);
 
     if let Ok(mut guard) = GROUP_POLICY_CACHE.lock() {
-        if max_age == 0 {
+        if parsed.max_age == 0 {
             guard.remove(&key);
         } else {
             let endpoints = parsed.endpoints.iter().map(|ep| ep.url.clone()).collect();
-            guard.insert(key, endpoints, Duration::from_secs(max_age));
+            guard.insert(key, endpoints, Duration::from_secs(parsed.max_age));
         }
     }
 }

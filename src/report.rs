@@ -13,7 +13,7 @@ pub struct NELReport {
     pub protocol: String,
     pub method: String,
     pub status_code: usize,
-    pub elapsed_time: u128,
+    pub elapsed_time: Duration,
     phase: String,
     error_type: String,
 }
@@ -29,7 +29,7 @@ impl NELReport {
             protocol: "".to_string(),
             method: "".to_string(),
             status_code: 0,
-            elapsed_time: 0,
+            elapsed_time: Default::default(),
             phase: "".to_string(),
             error_type: "".to_string(),
         }
@@ -65,7 +65,7 @@ impl NELReport {
         self.status_code = code;
     }
     pub fn set_elapsed_time(&mut self, elapsed: Duration) {
-        self.elapsed_time = elapsed.as_millis();
+        self.elapsed_time = elapsed;
     }
 
     pub fn set_error<T: Into<Error>>(&mut self, err: T) {
@@ -136,7 +136,7 @@ impl From<&NELReport> for ReportHeader {
                 protocol: report.protocol.clone(),
                 method: report.method.clone(),
                 status_code: report.status_code,
-                elapsed_time: report.elapsed_time,
+                elapsed_time: report.elapsed_time.as_millis(),
                 phase: if report.is_success() {
                     "application".to_string()
                 } else {
