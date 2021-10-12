@@ -4,7 +4,7 @@ description = "Basic utilities for building and sending NEL reports."
 version = "0.1.2"
 authors = ["Brendan McMillion <brendan@cloudflare.com>"]
 license = "BSD-3-Clause"
-repository = "https://github.com/cloudflare/nel"
+repository = "https://github.com/cloudflare/nel-rs"
 edition = "2018"
 
 [dependencies]
