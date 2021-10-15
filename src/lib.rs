@@ -218,11 +218,16 @@ where
 
 fn choose_endpoint(report: &NELReport, evaluate_drop: bool) -> Option<String> {
     // Pull up the policies that correspond to this report.
-    let report_url = Url::parse(&report.url).ok()?;
-    let host = report_url.host_str()?;
+    let host = match &report.host_override {
+        Some(host) => host.clone(),
+        None => {
+            let report_url = Url::parse(&report.url).ok()?;
+            report_url.host_str()?.to_owned()
+        }
+    };
     let nel_policy = {
         let guard = NEL_POLICY_CACHE.lock().ok()?;
-        let policy = guard.get(host.clone())?;
+        let policy = guard.get(&host)?;
         policy.clone()
     };
     let group_policy = {

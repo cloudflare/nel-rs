@@ -16,6 +16,9 @@ pub struct NELReport {
     pub elapsed_time: Duration,
     phase: String,
     error_type: String,
+
+    /// Overrides the URL host for the purpose of choosing where to submit the report.
+    pub host_override: Option<String>,
 }
 
 impl NELReport {
@@ -32,6 +35,8 @@ impl NELReport {
             elapsed_time: Default::default(),
             phase: "".to_string(),
             error_type: "".to_string(),
+
+            host_override: None,
         }
     }
 
