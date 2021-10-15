@@ -20,7 +20,7 @@ use url::Url;
 pub use error::Error;
 pub use report::NELReport;
 
-const RETRY_TIMEOUT: Duration = Duration::from_secs(5);
+const RETRY_TIMEOUT: Duration = Duration::from_secs(60);
 
 #[derive(Clone)]
 struct NELPolicy {
