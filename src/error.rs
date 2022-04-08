@@ -1,5 +1,3 @@
-use rustls::TLSError;
-
 #[cfg(feature = "reqwest-error")]
 mod reqwest;
 
@@ -76,7 +74,7 @@ impl From<&std::io::Error> for Error {
                 _ => match err.get_ref() {
                     None => Error::new("tcp", "failed"),
                     Some(inner) => {
-                        if inner.downcast_ref::<TLSError>().is_some() {
+                        if inner.downcast_ref::<rustls::Error>().is_some() {
                             Error::new("tls", "protocol.error")
                         } else {
                             Error::new("unknown", err)
