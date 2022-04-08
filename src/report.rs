@@ -42,7 +42,7 @@ impl NELReport {
 
     /// Returns true if no error has been attached to the report.
     pub fn is_success(&self) -> bool {
-        self.phase == ""
+        self.phase.is_empty()
     }
 
     pub fn set_referer<T: ToString>(&mut self, val: Option<T>) {
@@ -53,9 +53,9 @@ impl NELReport {
 
         // Remove port if present.
         if server_ip.starts_with('[') {
-            server_ip = server_ip[1..].splitn(2, ']').next().unwrap().to_string();
+            server_ip = server_ip[1..].split(']').next().unwrap().to_string();
         } else {
-            server_ip = server_ip.splitn(2, ':').next().unwrap().to_string();
+            server_ip = server_ip.split(':').next().unwrap().to_string();
         }
 
         self.server_ip = server_ip;
