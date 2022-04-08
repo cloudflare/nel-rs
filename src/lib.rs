@@ -112,7 +112,7 @@ pub fn report_to_header(host: &str, hdr: &str) {
         && parsed
             .endpoints
             .iter()
-            .fold(true, |ok, ep| ok && !ep.url.is_empty());
+            .all(|ep| !ep.url.is_empty());
     if !valid {
         return;
     }
@@ -243,10 +243,8 @@ fn choose_endpoint(report: &NELReport, evaluate_drop: bool) -> Option<String> {
             if random::<f32>() >= nel_policy.success_fraction {
                 return None;
             }
-        } else {
-            if random::<f32>() >= nel_policy.failure_fraction {
-                return None;
-            }
+        } else if random::<f32>() >= nel_policy.failure_fraction {
+            return None;
         }
     }
 
