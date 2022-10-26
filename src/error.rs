@@ -52,8 +52,6 @@ impl From<&std::io::Error> for Error {
     fn from(err: &std::io::Error) -> Self {
         use std::io::ErrorKind;
 
-        eprintln!("{:?}", err);
-
         match err.kind() {
             ErrorKind::TimedOut => Error::new("tcp", "timed_out"),
             ErrorKind::ConnectionReset => Error::new("tcp", "reset"),
