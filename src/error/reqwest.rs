@@ -82,20 +82,16 @@ mod tests {
     // We test them with both rustls and native-tls, because the errors are completely disjoint.
 
     fn clients() -> Vec<reqwest::Client> {
-        let mut c = vec![];
-        c.push(
+        vec![
             reqwest::ClientBuilder::new()
                 .use_native_tls()
                 .build()
                 .unwrap(),
-        );
-        c.push(
             reqwest::ClientBuilder::new()
                 .use_rustls_tls()
                 .build()
                 .unwrap(),
-        );
-        c
+        ]
     }
 
     #[tokio::test]
