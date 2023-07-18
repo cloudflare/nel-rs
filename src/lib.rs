@@ -108,10 +108,7 @@ pub fn report_to_header(host: &str, hdr: &str) {
 
     let valid = !parsed.group.is_empty()
         && !parsed.endpoints.is_empty()
-        && parsed
-            .endpoints
-            .iter()
-            .all(|ep| !ep.url.is_empty());
+        && parsed.endpoints.iter().all(|ep| !ep.url.is_empty());
     if !valid {
         return;
     }
