@@ -1,7 +1,7 @@
 [package]
 name = "nel"
 description = "Basic utilities for building and sending NEL reports."
-version = "0.1.5"
+version = "0.1.6"
 authors = ["Noah Kennedy <nkennedy@cloudflare.com>", "Brendan McMillion"]
 license = "BSD-3-Clause"
 repository = "https://github.com/cloudflare/nel-rs"
