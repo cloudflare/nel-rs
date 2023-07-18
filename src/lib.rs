@@ -7,8 +7,7 @@ mod report;
 extern crate lazy_static;
 
 use deadqueue::limited::Queue;
-use futures::future::{Fuse, FutureExt};
-use futures::{pin_mut, select, Future};
+use futures_util::{future::Fuse, pin_mut, select, Future, FutureExt};
 use rand::{random, seq::SliceRandom, thread_rng};
 use report::FailedReport;
 use serde::{Deserialize, Serialize};
